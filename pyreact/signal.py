@@ -1,5 +1,5 @@
 """
-This module contains the signal and observer implementations
+This module contains the signal and associated observer implementations
 
 Signals represent values that vary with time, but always have the concept
 of a current value
@@ -124,14 +124,14 @@ class Var(Signal):
             # Propagate the update
             propagator.propagate(self, result.Success(self.__current))
             
-    def __call__(self, *args):
-        # Additional syntactic sugar for setting a variable
-        # If an argument is given, treat it as a set
-        if args:
-            self.update(args[0])
-        # If no argument is given, treat it as a get
-        else:
-            return super(Var, self).__call__()
+    def __lshift__(self, new_value):
+        """
+        Syntactic sugar for self.update
+        
+        Returns this signal to allow for chained 'pushes'
+        """
+        self.update(new_value)
+        return self
         
         
 class Computed(Signal, Reactor):
