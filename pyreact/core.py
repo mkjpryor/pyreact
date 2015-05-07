@@ -144,9 +144,9 @@ class Reactor(Node):
         """
         Pings this reactor, causing it to react
         
-        incoming is a set of emitters
+        incoming is a set of (emitter, result) tuples
         
-        Returns the set of reactors to which changes should be propagated
+        Returns the set of (reactor, result) tuples which should be propagated
         """
         pass
     
@@ -162,30 +162,33 @@ class Propagator(object):
     """
     Propagates changes through the data-flow graph using a breadth-first method
     
-    ping should be called exactly once for each affected reactor in the data-flow graph
+    ping *should* be called exactly once for each affected reactor in the data-flow graph
     """
     
-    def propagate(self, source):
+    def propagate(self, source, value):
         """
-        Propagates changes to source through the object graph
+        Propagates the given value from source through the object graph
+        
+        value should be a result, indicating whether it is a success or failure that is
+        being propagated
         """
-        # Get a set of (emitter, reactor) tuples for the given emitter
-        pings = { (source, r) for r in source.children }
+        # Get a set of (emitter, reactor, result) tuples for the given emitter
+        pings = { (source, r, value) for r in source.children }
         while len(pings) != 0:
             # Split the pings into those that will happen now and those that will
             # happen later based on the level of the reactors
-            min_level = min((r.level for (_, r) in pings))
+            min_level = min((r.level for (_, r, _) in pings))
             now = { p for p in pings if p[1].level == min_level }
             pings -= now
             # Group the pings to be done now by reactor
             for (r, ps) in itertools.groupby(now, lambda p: p[1]):
                 # Cause the reactor to react to the pings
                 #   Remove the reactor from the pings before passing them
-                todo = r.ping({ e for (e, _) in ps })
+                todo = r.ping({ (e, v) for (e, _, v) in ps })
                 # If the reactor is also an emitter, add the returned pings
                 # to the list for next time
                 if isinstance(r, Emitter):
-                    pings |= { (r, r_next) for r_next in todo }
+                    pings |= { (r, r_next, v) for (r_next, v) in todo }
 
     @classmethod
     def instance(cls):
