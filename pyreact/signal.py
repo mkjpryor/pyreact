@@ -1,5 +1,5 @@
 """
-This module contains the signal and associated observer implementations
+This module contains the signal (and associated observer) implementation
 
 Signals represent values that vary with time, but always have the concept
 of a current value
@@ -119,6 +119,11 @@ class Var(Signal):
         return self.__current
     
     def update(self, new_value, propagator = Propagator.instance()):
+        """
+        Updates the current value of this signal to the new value and propagates
+        the change through the data-flow graph
+        """
+        
         if new_value != self.__current:
             self.__current = new_value
             # Propagate the update

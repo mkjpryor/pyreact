@@ -62,5 +62,6 @@ nbproject
 # Pydev
 .project
 .pydevproject
-/test.py
-/test2.py
+
+# Test files
+/test*.py
