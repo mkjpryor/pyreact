@@ -42,7 +42,8 @@ class Signal(Emitter):
         tracking.register_dependency(self)
         return self.now
     
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def now(self):
         """
         Gets the current value of this signal, but doesn't register a dependency
@@ -87,8 +88,8 @@ class Val(Signal):
     """
     
     def __init__(self, value):
-        self.__value = value
         super(Val, self).__init__()
+        self.__value = value
         
     @property
     def level(self):
@@ -106,8 +107,8 @@ class Var(Signal):
     """
     
     def __init__(self, initial):
-        self.__current = initial
         super(Var, self).__init__()
+        self.__current = initial
         
     @property
     def level(self):
@@ -146,24 +147,17 @@ class Computed(Signal, Reactor):
     """
     
     def __init__(self, calc):
+        Signal.__init__(self)
+        Reactor.__init__(self)
         self.__calc = calc
-        # State is a tuple of (level, result)
-        #   level should be an int which is >= 0
-        #   result is a Result (Success or Failure) representing the current state
-        #          of the computation
+        # Our state is a Result (Success or Failure) representing the current
+        # state of our underlying computation
         self.__state = self.__recalculate()
-        super(Computed, self).__init__()
         
     @property
-    def level(self):
-        # Just return the level that was computed when we last recalculated
-        return self.__state[0]
-    
-    @property
     def now(self):
-        _, r = self.__state
         # If the state is an error, this will raise it
-        return r.result
+        return self.__state.result
     
     def ping(self, incoming):
         # Recalculate our state
@@ -172,13 +166,11 @@ class Computed(Signal, Reactor):
         if new_state == self.__state: return set()
         # Otherwise, propagate the change to our children
         self.__state = new_state
-        return { (c, self.__state[1]) for c in self.children }
+        return { (c, self.__state) for c in self.children }
 
     def __recalculate(self):
-        # We use a list to accumulate the levels of each dependency
-        levels = []  # Assume we are at level 0 unless we find dependencies
-        # Use the fact that link_child returns nothing to allow this to work
-        tracking.begin(lambda dep: dep.link_child(self) or levels.append(dep.level))
+        # Link ourself to our dependencies as we go
+        tracking.begin(lambda dep: dep.link_child(self))
         # If an error occurs during the calculation, we want to store it
         r = None
         try:
@@ -187,7 +179,7 @@ class Computed(Signal, Reactor):
             r = result.Failure(e)
         finally:
             tracking.end()
-        return max(levels) + 1 if levels else 0, r
+        return r
 
 
 class Observer(Reactor):
@@ -199,8 +191,8 @@ class Observer(Reactor):
     """
     
     def __init__(self, action):
-        self.__action = action
         super(Observer, self).__init__()
+        self.__action = action
         self.__do_action()  # Call the action for the initial values, and
                             # to establish dependencies  
         

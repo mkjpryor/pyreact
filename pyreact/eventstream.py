@@ -80,10 +80,10 @@ class Observer(Reactor):
     """
     
     def __init__(self, events, on_value = util.nothing, on_error = util.throw):
+        super(Observer, self).__init__()
         self.__on_value = on_value
         self.__on_error = on_error
         events.link_child(self, keep_alive = True)
-        super(Observer, self).__init__()
         
     @property
     def level(self):
@@ -93,9 +93,11 @@ class Observer(Reactor):
     def ping(self, incoming):
         # When pinged, just call the relevant action depending on whether
         # we received a success or a failure
-        # Let the exception propagate on purpose, as we shouldn't be being
-        # pinged except in response to our parent
-        res = next((r for (e, r) in incoming if e in self.parents))
+        try:
+            res = next((r for (e, r) in incoming if e in self.parents))
+        except StopIteration:
+            # If the ping was not from our parent, there is nothing to do
+            return set()
         if res.success:
             self.__on_value(res.result)
         else:

@@ -24,14 +24,13 @@ import abc
 import weakref
 
 
-class Node(object):
+class Node(metaclass = abc.ABCMeta):
     """
     A node in the data-flow graph
     """
     
-    __metaclass__ = abc.ABCMeta
-    
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def level(self):
         """
         The level of the node in the data-flow graph
@@ -47,11 +46,11 @@ class Emitter(Node):
     be garbage collected when the emitter holds the only reference to it 
     """
     
-    # The set of hard references to children
-    __hard_refs = set()
-    
-    # The set of weak references to children
-    __weak_refs = set()
+    def __init__(self):
+        # The set of hard references to children
+        self.__hard_refs = set()
+        # The set of weak references to children
+        self.__weak_refs = set()
     
     def __compact_weak_refs(self):
         """
@@ -111,8 +110,14 @@ class Reactor(Node):
     A node that reacts to pings from its parents
     """
     
-    # The set of parents
-    __parents = set()
+    def __init__(self):
+        # The set of parents
+        self.__parents = set()
+        
+    @property
+    def level(self):
+        # The default level for a reactor is one greater than its highest parent
+        return max((p.level for p in self.__parents)) + 1 if self.__parents else 0
     
     @property
     def parents(self):
@@ -158,7 +163,7 @@ class Reactor(Node):
             self.unlink_parent(p)
 
 
-class Propagator(object):
+class Propagator:
     """
     Propagates changes through the data-flow graph using a breadth-first method
     
